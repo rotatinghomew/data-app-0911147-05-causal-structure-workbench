@@ -1,9 +1,31 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>课程过程变量的因果结构候选与等价关系复核</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
-<body><header><h1>课程过程变量的因果结构候选与等价关系复核</h1><p>成对有效样本相关、时间元数据及人工关系注释</p></header><main>
+<body><header><h1>课程过程变量的因果结构候选与等价关系复核</h1><p>成对有效样本相关、时间元数据及人工关系注释；结构候选探索台输出与资料相容的等价类，不宣布任何变量必然导致另一变量</p></header><main>
 <section><h2>当前资料概况</h2><pre id="summary">载入中</pre></section>
 <section><h2>业务记录</h2><label>记录集合<select id="source"></select></label><span id="record-count"></span><div id="records"></div></section>
+<section id="explorer"><h2>结构候选探索台</h2>
+<p class="hint">在同一观测集合上检验条件独立关系，输出与资料相容的结构候选（等价类）。方向未定的边会明确标出；由知识定向的边可回看对应假设；每条关系都能回到检验证据与约束。</p>
+<div class="explorer-controls">
+<fieldset><legend>观测集合（独立性判断所用人群）</legend>
+<label>课程群体<select id="cohort"></select></label>
+<div id="variable-picker"></div>
+<p class="hint">更换群体或变量即更换观测集合，新结果不与其它集合的图拼接。</p></fieldset>
+<fieldset><legend>检验参数</legend>
+<label>显著性水平<select id="alpha"><option value="0.01">0.01</option><option value="0.05" selected>0.05</option><option value="0.1">0.1</option></select></label>
+<label>最大条件集<select id="max-cond"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select></label>
+<label>稳定程度重抽样<select id="bootstrap"><option value="0">关闭</option><option value="30">30</option><option value="50" selected>50</option><option value="100">100</option></select></label></fieldset>
+<fieldset><legend>提交知识（时间先后与已确认流程限制）</legend>
+<label>时间先后（前者不晚于后者，每行一对）<textarea id="k-temporal" rows="3" spellcheck="false"></textarea></label>
+<label>必需方向（每行一对）<textarea id="k-required" rows="2" spellcheck="false"></textarea></label>
+<label>禁止方向（每行一对）<textarea id="k-forbidden" rows="2" spellcheck="false"></textarea></label>
+<button type="button" id="k-reset">按资料登记重填</button></fieldset>
+</div>
+<button id="run-discovery">在同一观测集合上比较结构候选</button>
+<div id="discovery-result"></div></section>
+<section id="saved-graphs"><h2>已保存的结构候选图</h2>
+<p class="hint">仅供后续实验设计讨论，不构成学生个人决策依据。</p>
+<ul id="graphs"></ul><div id="saved-view"></div></section>
 <div class="columns"><section><h2>查看成对相关</h2><form id="action-form"></form><pre id="result">选择记录后操作</pre>
 <aside>当前页面保留原始描述与业务记录，具体统计含义见分析约定。</aside></section>
 <section><h2>工作批注</h2><form id="note-form"><textarea id="note" required maxlength="2000" aria-label="批注内容"></textarea><button>保存批注</button></form><ul id="notes"></ul></section></div>

@@ -7,7 +7,7 @@ import threading
 import unittest
 
 from app.service import create_server
-from app.storage import NoteStore
+from app.storage import GraphStore, NoteStore
 
 
 class HttpContractTests(unittest.TestCase):
@@ -51,6 +51,42 @@ class HttpContractTests(unittest.TestCase):
     def test_invalid_action_is_client_error(self):
         with self.assertRaises(HTTPError) as caught:
             self.request('/api/action', {'operation': 'unknown'})
+        self.assertEqual(caught.exception.code, 400)
+        caught.exception.close()
+
+    def test_discovery_endpoint_returns_population_and_edges(self):
+        payload = {'variables': ['preparation', 'practice', 'feedback', 'score'],
+                   'knowledge': {'temporal_order': [['preparation', 'practice']]},
+                   'bootstrap': 10}
+        status, result = self.request('/api/discovery', payload)
+        self.assertEqual(status, 200)
+        self.assertEqual(result['status'], 'ok')
+        self.assertTrue(result['population']['fingerprint'])
+        self.assertEqual({test['n'] for test in result['tests']},
+                         {result['population']['rows_used']})
+        self.assertTrue(result['edges'])
+        self.assertTrue(result['assumptions'])
+
+    def test_discovery_rejects_unknown_variable(self):
+        with self.assertRaises(HTTPError) as caught:
+            self.request('/api/discovery', {'variables': ['preparation', 'ghost']})
+        self.assertEqual(caught.exception.code, 400)
+        caught.exception.close()
+
+    def test_graph_snapshot_survives_store_reopen(self):
+        status, run = self.request('/api/discovery', {
+            'variables': ['preparation', 'practice', 'score'], 'bootstrap': 0})
+        self.assertEqual(status, 200)
+        status, entry = self.request('/api/graphs', {'run': run, 'note': '评审用'})
+        self.assertEqual(status, 201)
+        self.assertEqual(entry['purpose'], GraphStore.PURPOSE)
+        self.assertEqual(GraphStore(Path(self.temporary.name)).list(), [entry])
+        status, listed = self.request('/api/graphs')
+        self.assertEqual([item['id'] for item in listed['graphs']], [entry['id']])
+
+    def test_graph_snapshot_requires_population(self):
+        with self.assertRaises(HTTPError) as caught:
+            self.request('/api/graphs', {'run': {'edges': []}})
         self.assertEqual(caught.exception.code, 400)
         caught.exception.close()
 

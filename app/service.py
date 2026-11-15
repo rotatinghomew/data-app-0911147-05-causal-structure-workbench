@@ -7,8 +7,9 @@ import json
 import os
 import threading
 
+from . import discovery
 from . import domain
-from .storage import NoteStore
+from .storage import GraphStore, NoteStore
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +22,9 @@ def load_study(path=None):
 
 def create_server(host='127.0.0.1', port=0, data=None, state_dir=None):
     dataset = copy.deepcopy(load_study() if data is None else data)
-    notes = NoteStore(Path(state_dir or os.environ.get('APP_STATE_DIR', ROOT / '.local')))
+    state = Path(state_dir or os.environ.get('APP_STATE_DIR', ROOT / '.local'))
+    notes = NoteStore(state)
+    graphs = GraphStore(state)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format_string, *arguments):
@@ -49,6 +52,8 @@ def create_server(host='127.0.0.1', port=0, data=None, state_dir=None):
                     self.reply(200, domain.baseline(dataset))
                 elif route == '/api/notes':
                     self.reply(200, {'notes': notes.list()})
+                elif route == '/api/graphs':
+                    self.reply(200, {'graphs': graphs.list()})
                 elif route in ('/', '/app.js', '/style.css'):
                     name = 'index.html' if route == '/' else route[1:]
                     content_type = {'index.html': 'text/html', 'app.js': 'text/javascript', 'style.css': 'text/css'}[name]
@@ -60,12 +65,14 @@ def create_server(host='127.0.0.1', port=0, data=None, state_dir=None):
 
         def do_POST(self):
             route = urlsplit(self.path).path
-            if route not in ('/api/action', '/api/notes'):
+            limits = {'/api/action': 65536, '/api/notes': 65536,
+                      '/api/discovery': 65536, '/api/graphs': 1000000}
+            if route not in limits:
                 self.reply(404, {'error': '路径不存在'})
                 return
             try:
                 length = int(self.headers.get('Content-Length', '0'))
-                if not 0 < length <= 65536:
+                if not 0 < length <= limits[route]:
                     raise ValueError('请求体长度不合法')
                 payload = json.loads(self.rfile.read(length))
                 if not isinstance(payload, dict):
@@ -73,6 +80,10 @@ def create_server(host='127.0.0.1', port=0, data=None, state_dir=None):
                 if route == '/api/action':
                     result = domain.act(dataset, payload)
                     self.reply(200, result)
+                elif route == '/api/discovery':
+                    self.reply(200, discovery.explore(dataset, payload))
+                elif route == '/api/graphs':
+                    self.reply(201, graphs.append(payload.get('run'), payload.get('note')))
                 else:
                     self.reply(201, notes.append(payload.get('text'), payload.get('selection', {})))
             except (ValueError, KeyError, TypeError) as error:
